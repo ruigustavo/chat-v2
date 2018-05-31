@@ -64,7 +64,7 @@ public class ChatClient implements Runnable
            try
            {  
                // Sends message from console to server
-               streamOut.writeUTF(console.readUTF());
+               streamOut.writeUTF(console.readLine());
                streamOut.flush();
            }
          
