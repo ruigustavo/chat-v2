@@ -25,6 +25,7 @@ public class ChatClient implements Runnable
 
     private PrivateKey privateKey = null;
     private PublicKey publicKey = null;
+    private ArrayList<Object> KeyRing = null;
 
     public ChatClient(String serverName, int serverPort)
     {  
@@ -95,12 +96,20 @@ public class ChatClient implements Runnable
     private boolean loadKeys() {
         DataInputStream reader = new DataInputStream(System.in);
         FileInputStream fis = null;
+        ObjectInputStream ois = null;
+        FileInputStream fis1 = null;
+        ObjectInputStream ois1 = null;
+
         boolean fileExists = true;
         DataInputStream dis = new DataInputStream(System.in);
         byte[] password = new byte[32];
         FileOutputStream fos = null;
         ObjectOutputStream oos = null;
-        ObjectInputStream ois = null;
+        FileOutputStream fos1 = null;
+        ObjectOutputStream oos1 = null;
+
+
+
 
         // Read username and password
         String keyFile;
@@ -110,7 +119,7 @@ public class ChatClient implements Runnable
             dis.read(password, 0, 32);
             keyFile = username+".keys";
         } catch (IOException e) {
-              System.out.println("Something went horribly wrong. We're soory.");
+              System.out.println("Something went horribly wrong. We're sorry.");
               return false;
         }
 
@@ -129,8 +138,10 @@ public class ChatClient implements Runnable
             try {
                 fos = new FileOutputStream(keyFile);
                 oos = new ObjectOutputStream(fos);
+                fos1 = new FileOutputStream(keyFile+".public");
+                oos1 = new ObjectOutputStream(fos1);
             } catch (IOException e) {
-                System.out.println("Couldn't create key file. Terminating.");
+                System.out.println("Couldn't create key file. Terminating on Step 1.");
                 return false;
             }
 
@@ -149,6 +160,8 @@ public class ChatClient implements Runnable
                 keyList.add(cipher.doFinal(publicKey.getEncoded()));
 
                 oos.writeObject(keyList);
+
+                oos1.writeObject(publicKey);
             } catch (NoSuchAlgorithmException|NoSuchPaddingException |InvalidKeyException|IllegalBlockSizeException |BadPaddingException e) {
                 System.out.println("Couldn't encrypt newly generated keys. Terminating");
                 return false;
@@ -161,8 +174,10 @@ public class ChatClient implements Runnable
             try {
                 fis = new FileInputStream(keyFile);
                 ois = new ObjectInputStream(fis);
+                fis1 = new FileInputStream("ServerPublicKeyFile.key");
+                ois1 = new ObjectInputStream(fis1);
             } catch (IOException e) {
-                System.out.println("Couldn't read key file. Terminating.");
+                System.out.println("Couldn't read key file. Terminating em Loading.");
                 return false;
             }
 
@@ -176,6 +191,24 @@ public class ChatClient implements Runnable
 
                 privateKey = kf.generatePrivate(new PKCS8EncodedKeySpec(cipher.doFinal(keyList.get(0))));
                 publicKey = kf.generatePublic(new X509EncodedKeySpec(cipher.doFinal(keyList.get(1))));
+
+                // Leitura da chave pública do Server
+
+                KeyRing = new ArrayList<>();
+                Object PKD = ois1.readObject();
+//                System.out.println("Passo 1");
+
+//                System.out.println("Empty?: "+ KeyRing.isEmpty());
+                KeyRing.add(PKD);
+
+//                System.out.println("Passo 2");
+
+ //               PKD = ois1.readObject();
+//
+//                System.out.println("Empty?: "+ KeyRing.isEmpty());
+//                KeyRing.add(PKD);
+
+//                System.out.println("Passo 3");
 
             } catch (NoSuchAlgorithmException|NoSuchPaddingException|InvalidKeyException|IllegalBlockSizeException|BadPaddingException|InvalidKeySpecException e) {
                 if(fileExists) {

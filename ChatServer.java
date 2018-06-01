@@ -21,6 +21,11 @@ public class ChatServer implements Runnable
 	private ChatServerThread clients[] = new ChatServerThread[20];
 	private ServerSocket server_socket = null;
 	private static final String keyFile = "Serverkeys.keys";
+    private static final String ServerPublicKeyFile = "ServerPublicKeyFile.key";
+ //   private static final String PKDFile = "ServerPublicKeyFile.key";
+
+    ArrayList<Object> KeyRing = null;
+
 	PrivateKey privateKey = null;
 	PublicKey publicKey = null;
 	private Thread thread = null;
@@ -31,6 +36,7 @@ public class ChatServer implements Runnable
 			if (!loadKeys()) {
 				return;
 			}
+			loadClientsKeys();
 		try
       		{  
             		// Binds to port and starts server
@@ -114,7 +120,9 @@ public class ChatServer implements Runnable
 	@SuppressWarnings("unchecked")
 	private boolean loadKeys() {
 		FileInputStream fis = null;
+        FileInputStream fis1 = null;
 		ObjectInputStream ois;
+        ObjectInputStream ois1;
 		System.out.println("Insert password: ");
 		DataInputStream dis = new DataInputStream(System.in);
 		byte[] password = new byte[32];
@@ -123,17 +131,22 @@ public class ChatServer implements Runnable
 		try {
 			int ignore = dis.read(password, 0, 32);
 			fis = new FileInputStream(keyFile);
+            fis1 = new FileInputStream(ServerPublicKeyFile);
 		} catch (IOException e) {
 			System.out.println("Generating new key file.");
 		}
 		// Key file doesn't exist
 		if (fis == null) {
 			FileOutputStream fos;
+			FileOutputStream fos1;
 			ObjectOutputStream oos;
+            ObjectOutputStream oos1;
 			// Generate new key file
 			try {
 				fos = new FileOutputStream(keyFile);
 				oos = new ObjectOutputStream(fos);
+                fos1 = new FileOutputStream(ServerPublicKeyFile);
+                oos1 = new ObjectOutputStream(fos1);
 			} catch (IOException e) {
 				System.out.println("Couldn't create key file. Terminating.");
 				return false;
@@ -155,6 +168,10 @@ public class ChatServer implements Runnable
 				serverkeylist.add(cipher.doFinal(publicKey.getEncoded()));
 
 				oos.writeObject(serverkeylist);
+
+				oos1.writeObject(publicKey);
+
+
 			} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
 				System.out.println("Couldn't encrypt newly generated keys. Terminating");
 				return false;
@@ -168,6 +185,8 @@ public class ChatServer implements Runnable
 		try {
 			fis = new FileInputStream(keyFile);
 			ois = new ObjectInputStream(fis);
+            fis1 = new FileInputStream(ServerPublicKeyFile);
+            ois1 = new ObjectInputStream(fis1);
 		} catch (IOException e) {
 			System.out.println("Couldn't read key file. Terminating.");
 			return false;
@@ -184,6 +203,10 @@ public class ChatServer implements Runnable
 			privateKey = kf.generatePrivate(new PKCS8EncodedKeySpec(cipher.doFinal(serverkeylist.get(0))));
 			publicKey = kf.generatePublic(new X509EncodedKeySpec(cipher.doFinal(serverkeylist.get(1))));
 
+ //           Object PKD = ois1.readObject();
+
+//            System.out.println(publicKey.equals(PKD));
+
 		} catch (NoSuchAlgorithmException|NoSuchPaddingException|InvalidKeyException|IllegalBlockSizeException|BadPaddingException|InvalidKeySpecException e) {
 			System.out.println("Couldn't decrypt stored keys. Terminating.");
 			return false;
@@ -194,6 +217,61 @@ public class ChatServer implements Runnable
 
 		return true;
 	}
+
+    @SuppressWarnings("unchecked")
+    private boolean loadClientsKeys() {
+        FileInputStream fis;
+        ObjectInputStream ois;
+        FileInputStream fis1;
+        ObjectInputStream ois1;
+
+        try {
+            fis = new FileInputStream("Humberto.keys.public");
+            ois = new ObjectInputStream(fis);
+            fis1 = new FileInputStream("Rui.keys.public");
+            ois1 = new ObjectInputStream(fis1);
+
+        } catch (IOException e) {
+            System.out.println("Clients Public Keys not found in PKD!");
+            return false;
+        }
+
+        try {
+            KeyRing = new ArrayList<>();
+
+            Object PKD = ois.readObject();
+
+            System.out.println("Passo 1");
+
+ //           System.out.println(publicKey.equals(PKD));
+
+ //           System.out.println("Passo 2");
+
+//            System.out.println(PKD.toString());
+
+//            System.out.println(KeyRing.size());
+
+            System.out.println("Empty?: "+ KeyRing.isEmpty());
+            KeyRing.add(PKD);
+
+            System.out.println("Passo 2");
+
+            PKD = ois1.readObject();
+
+            System.out.println("Empty?: "+ KeyRing.isEmpty());
+            KeyRing.add(PKD);
+
+            System.out.println("Passo 3");
+
+           System.out.println(publicKey.equals(KeyRing.get(0)));
+
+        } catch (IOException|ClassNotFoundException e) {
+            System.out.println("Couldn't read key file. Terminating.");
+            return false;
+        }
+
+        return true;
+    }
 
 	private boolean generateKeys() {
 		// Generate key pair
